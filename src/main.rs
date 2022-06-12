@@ -29,6 +29,7 @@ struct PlatformSpecificRecipe {
 enum Operation {
     Command {
         command: String,
+        as_root: Option<bool>,
         args: Option<Vec<String>>,
     },
     Link {
@@ -74,8 +75,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 impl Operation {
     fn execute(&self) -> Result<(), Box<dyn std::error::Error>> {
         match self {
-            Self::Command { command, args } => {
-                Self::execute_command(command, args)?;
+            Self::Command {
+                command,
+                as_root,
+                args,
+            } => {
+                Self::execute_command(command, as_root, args)?;
             }
             Self::Link { original, link } => {
                 Self::execute_link(original, link)?;
@@ -87,14 +92,13 @@ impl Operation {
 
     fn execute_command(
         command: &String,
+        as_root: &Option<bool>,
         args: &Option<Vec<String>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut command = Command::new(command);
-        let mut command = command.stdout(std::process::Stdio::inherit());
-
-        if let Some(args) = args {
-            command = command.args(args);
-        }
+        let mut command = match std::env::consts::OS {
+            "linux" | "macos" => Self::construct_command_unix(command, args, as_root),
+            _ => unimplemented!(),
+        };
 
         println!("execute `{:?}`", command);
 
@@ -105,6 +109,27 @@ impl Operation {
         } else {
             Err(Box::new(ExecutionError(exit_status.code())))
         }
+    }
+
+    fn construct_command_unix(
+        command_str: &String,
+        args: &Option<Vec<String>>,
+        as_root: &Option<bool>,
+    ) -> Command {
+        let mut command: Command;
+
+        if let Some(true) = as_root {
+            command = Command::new("sudo");
+            command.arg(command_str);
+        } else {
+            command = Command::new(command_str);
+        }
+
+        if let Some(args) = args {
+            command.args(args);
+        }
+
+        command
     }
 
     fn execute_link(original: &String, link: &String) -> Result<(), Box<dyn std::error::Error>> {
@@ -126,7 +151,10 @@ impl Operation {
         }
     }
 
-    fn create_link_unix(original: &PathBuf, link: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn create_link_unix(
+        original: &PathBuf,
+        link: &PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         std::os::unix::fs::symlink(original, link)?;
         Ok(())
     }
