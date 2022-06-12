@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::collections::HashMap;
 use std::fs::File;
+use std::path::PathBuf;
 use std::process::Command;
 
 #[derive(Parser)]
@@ -31,8 +32,8 @@ enum Operation {
         args: Option<Vec<String>>,
     },
     Link {
-        from: String,
-        to: String,
+        original: String,
+        link: String,
     },
 }
 
@@ -76,8 +77,8 @@ impl Operation {
             Self::Command { command, args } => {
                 Self::execute_command(command, args)?;
             }
-            Self::Link { from, to } => {
-                println!("link from `{}` to `{}`", from, to)
+            Self::Link { original, link } => {
+                Self::execute_link(original, link)?;
             }
         }
 
@@ -104,6 +105,30 @@ impl Operation {
         } else {
             Err(Box::new(ExecutionError(exit_status.code())))
         }
+    }
+
+    fn execute_link(original: &String, link: &String) -> Result<(), Box<dyn std::error::Error>> {
+        let original_path = PathBuf::from(original);
+        // 実際にはファイルの存在だけではなくmetadataの取得に必要なパーミッションがないときにもエラーを出す
+        // これがなかったらどうせ現在のユーザーが読み取れないのでエラーにしてもよいはず
+        // cf. https://doc.rust-lang.org/std/fs/fn.metadata.html#errors
+        std::fs::metadata(&original_path)?;
+
+        let link_path = PathBuf::from(link);
+        // 今から張るリンクは存在してはならないが存在しているとリンクを張る段階でエラーが出るはず
+
+        println!("create symlink original: `{}` link: `{}`", original, link);
+
+        match std::env::consts::OS {
+            "linux" | "macos" => Self::create_link_unix(&original_path, &link_path),
+            "windows" => unimplemented!(),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn create_link_unix(original: &PathBuf, link: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        std::os::unix::fs::symlink(original, link)?;
+        Ok(())
     }
 }
 
