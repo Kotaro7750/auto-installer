@@ -32,13 +32,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("install `{}`", app.name);
 
             let mut failed = false;
-            for (i, operation) in ((&recipe.operations).iter()).enumerate() {
-                println!("STEP: {}", i + 1);
-                if let Err(_) = execution_platform.execute(operation) {
-                    failed = true;
-                    break;
-                };
-                println!("");
+            if recipe.skip_if.is_some() {
+                match execution_platform.app_already_installed(recipe.skip_if.as_ref().unwrap()) {
+                    Ok(installed) => {
+                        if installed {
+                            println!("`{}` is already installed. skip...", app.name);
+                            continue;
+                        }
+                    }
+                    Err(_) => failed = true,
+                }
+            }
+
+            if !failed {
+                for (i, operation) in ((&recipe.operations).iter()).enumerate() {
+                    println!("STEP: {}", i + 1);
+                    if let Err(_) = execution_platform.execute(operation) {
+                        failed = true;
+                        break;
+                    };
+                    println!("");
+                }
             }
 
             if failed {

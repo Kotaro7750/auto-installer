@@ -1,5 +1,8 @@
+use std::process::Stdio;
+
 use crate::command_executor::CommandExecutor;
 use crate::link_executor::LinkExecutor;
+use crate::schema::CommandConfig;
 use crate::schema::Operation;
 
 mod unix;
@@ -16,6 +19,18 @@ pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
         }
 
         Ok(())
+    }
+
+    fn app_already_installed(
+        &self,
+        checker_command_config: &CommandConfig,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut checker_command = self.construct_command(checker_command_config);
+        checker_command.stdout(Stdio::null());
+        checker_command.stderr(Stdio::null());
+
+        let status = checker_command.status()?;
+        Ok(status.success())
     }
 }
 

@@ -9,6 +9,7 @@ pub struct Application {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlatformSpecificRecipe {
+    pub skip_if: Option<CommandConfig>,
     pub operations: Vec<Operation>,
 }
 
