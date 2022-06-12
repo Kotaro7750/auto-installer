@@ -15,13 +15,13 @@ pub struct PlatformSpecificRecipe {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Operation {
-    Command {
-        command: String,
-        as_root: Option<bool>,
-        args: Option<Vec<String>>,
-    },
-    Link {
-        original: String,
-        link: String,
-    },
+    Command(CommandConfig),
+    Link { original: String, link: String },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandConfig {
+    pub command: String,
+    pub as_root: Option<bool>,
+    pub args: Option<Vec<String>>,
 }

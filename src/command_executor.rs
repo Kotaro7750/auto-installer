@@ -1,21 +1,15 @@
+use crate::schema::CommandConfig;
 use crate::ExecutionError;
 use std::process::Command;
 
 pub trait CommandExecutor {
-    fn construct_command(
-        &self,
-        command_str: &String,
-        args: &Option<Vec<String>>,
-        as_root: &Option<bool>,
-    ) -> Command;
+    fn construct_command(&self, command_config: &CommandConfig) -> Command;
 
     fn execute_command(
         &self,
-        command: &String,
-        as_root: &Option<bool>,
-        args: &Option<Vec<String>>,
+        command_config: &CommandConfig,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut command = self.construct_command(command, args, as_root);
+        let mut command = self.construct_command(command_config);
 
         println!("execute `{:?}`", command);
 

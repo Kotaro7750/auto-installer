@@ -4,26 +4,22 @@ use std::process::Command;
 use crate::command_executor::CommandExecutor;
 use crate::execution_platform::ExecutionPlatform;
 use crate::link_executor::LinkExecutor;
+use crate::schema::CommandConfig;
 
 pub struct UnixExecutionPlatform;
 
 impl CommandExecutor for UnixExecutionPlatform {
-    fn construct_command(
-        &self,
-        command_str: &String,
-        args: &Option<Vec<String>>,
-        as_root: &Option<bool>,
-    ) -> Command {
+    fn construct_command(&self, comman_config: &CommandConfig) -> Command {
         let mut command: Command;
 
-        if let Some(true) = as_root {
+        if let Some(true) = comman_config.as_root {
             command = Command::new("sudo");
-            command.arg(command_str);
+            command.arg(comman_config.command.clone());
         } else {
-            command = Command::new(command_str);
+            command = Command::new(comman_config.command.clone());
         }
 
-        if let Some(args) = args {
+        if let Some(ref args) = comman_config.args {
             command.args(args);
         }
 

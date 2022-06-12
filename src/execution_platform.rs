@@ -7,12 +7,8 @@ mod unix;
 pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
     fn execute(&self, operation: &Operation) -> Result<(), Box<dyn std::error::Error>> {
         match operation {
-            Operation::Command {
-                command,
-                as_root,
-                args,
-            } => {
-                self.execute_command(command, as_root, args)?;
+            Operation::Command(command_config) => {
+                self.execute_command(command_config)?;
             }
             Operation::Link { original, link } => {
                 self.execute_link(original, link)?;
