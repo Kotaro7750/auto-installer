@@ -41,64 +41,38 @@ enum Operation {
 #[derive(Debug)]
 struct ExecutionError(Option<i32>);
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = CommandLineArg::parse();
-
-    let file = File::open(args.scheme_file_path)?;
-    let apps = serde_yaml::from_reader::<File, Vec<Application>>(file)?;
-
-    for app in apps {
-        if let Some(recipe) = app.recipe.get(&args.platform) {
-            println!("install `{}`", app.name);
-
-            let mut failed = false;
-            for (i, operation) in ((&recipe.operations).iter()).enumerate() {
-                println!("STEP: {}", i + 1);
-                if let Err(_) = operation.execute() {
-                    failed = true;
-                    break;
-                };
-                println!("");
-            }
-
-            if failed {
-                println!("fail to install `{}`", app.name);
-            } else {
-                println!("succeed to install `{}`", app.name);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-impl Operation {
-    fn execute(&self) -> Result<(), Box<dyn std::error::Error>> {
-        match self {
-            Self::Command {
+trait ExecutionPlatform {
+    fn execute(&self, operation: &Operation) -> Result<(), Box<dyn std::error::Error>> {
+        match operation {
+            Operation::Command {
                 command,
                 as_root,
                 args,
             } => {
-                Self::execute_command(command, as_root, args)?;
+                self.execute_command(command, as_root, args)?;
             }
-            Self::Link { original, link } => {
-                Self::execute_link(original, link)?;
+            Operation::Link { original, link } => {
+                self.execute_link(original, link)?;
             }
         }
 
         Ok(())
     }
 
+    fn construct_command(
+        &self,
+        command_str: &String,
+        args: &Option<Vec<String>>,
+        as_root: &Option<bool>,
+    ) -> Command;
+
     fn execute_command(
+        &self,
         command: &String,
         as_root: &Option<bool>,
         args: &Option<Vec<String>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut command = match std::env::consts::OS {
-            "linux" | "macos" => Self::construct_command_unix(command, args, as_root),
-            _ => unimplemented!(),
-        };
+        let mut command = self.construct_command(command, args, as_root);
 
         println!("execute `{:?}`", command);
 
@@ -111,7 +85,45 @@ impl Operation {
         }
     }
 
-    fn construct_command_unix(
+    fn execute_link(
+        &self,
+        original: &String,
+        link: &String,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let original_path = PathBuf::from(original);
+        // 実際にはファイルの存在だけではなくmetadataの取得に必要なパーミッションがないときにもエラーを出す
+        // これがなかったらどうせ現在のユーザーが読み取れないのでエラーにしてもよいはず
+        // cf. https://doc.rust-lang.org/std/fs/fn.metadata.html#errors
+        std::fs::metadata(&original_path)?;
+
+        let link_path = PathBuf::from(link);
+        // 今から張るリンクは存在してはならないが存在しているとリンクを張る段階でエラーが出るはず
+
+        println!("create symlink original: `{}` link: `{}`", original, link);
+
+        self.create_link(&original_path, &link_path)
+    }
+
+    fn create_link(
+        &self,
+        original: &PathBuf,
+        link: &PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>>;
+}
+
+struct UnixExecutionPlatform;
+impl ExecutionPlatform for UnixExecutionPlatform {
+    fn create_link(
+        &self,
+        original: &PathBuf,
+        link: &PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        std::os::unix::fs::symlink(original, link)?;
+        Ok(())
+    }
+
+    fn construct_command(
+        &self,
         command_str: &String,
         args: &Option<Vec<String>>,
         as_root: &Option<bool>,
@@ -131,33 +143,45 @@ impl Operation {
 
         command
     }
+}
 
-    fn execute_link(original: &String, link: &String) -> Result<(), Box<dyn std::error::Error>> {
-        let original_path = PathBuf::from(original);
-        // 実際にはファイルの存在だけではなくmetadataの取得に必要なパーミッションがないときにもエラーを出す
-        // これがなかったらどうせ現在のユーザーが読み取れないのでエラーにしてもよいはず
-        // cf. https://doc.rust-lang.org/std/fs/fn.metadata.html#errors
-        std::fs::metadata(&original_path)?;
+fn construct_execution_platform() -> Box<dyn ExecutionPlatform> {
+    match std::env::consts::OS {
+        "linux" | "macos" => Box::new(UnixExecutionPlatform),
+        _ => unimplemented!(),
+    }
+}
 
-        let link_path = PathBuf::from(link);
-        // 今から張るリンクは存在してはならないが存在しているとリンクを張る段階でエラーが出るはず
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = CommandLineArg::parse();
 
-        println!("create symlink original: `{}` link: `{}`", original, link);
+    let file = File::open(args.scheme_file_path)?;
+    let execution_platform = construct_execution_platform();
+    let apps = serde_yaml::from_reader::<File, Vec<Application>>(file)?;
 
-        match std::env::consts::OS {
-            "linux" | "macos" => Self::create_link_unix(&original_path, &link_path),
-            "windows" => unimplemented!(),
-            _ => unimplemented!(),
+    for app in apps {
+        if let Some(recipe) = app.recipe.get(&args.platform) {
+            println!("install `{}`", app.name);
+
+            let mut failed = false;
+            for (i, operation) in ((&recipe.operations).iter()).enumerate() {
+                println!("STEP: {}", i + 1);
+                if let Err(_) = execution_platform.execute(operation) {
+                    failed = true;
+                    break;
+                };
+                println!("");
+            }
+
+            if failed {
+                println!("fail to install `{}`", app.name);
+            } else {
+                println!("succeed to install `{}`", app.name);
+            }
         }
     }
 
-    fn create_link_unix(
-        original: &PathBuf,
-        link: &PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        std::os::unix::fs::symlink(original, link)?;
-        Ok(())
-    }
+    Ok(())
 }
 
 impl std::fmt::Display for ExecutionError {
