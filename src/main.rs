@@ -28,15 +28,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let apps = serde_yaml::from_reader::<File, Vec<Application>>(file)?;
 
     for app in apps {
-        if let Some(recipe) = app.recipe.get(&args.platform) {
-            println!("install `{}`", app.name);
+        if let Some(recipe) = app.resolve_recipe(&args.platform) {
+            println!("install `{}`", app.name());
 
             let mut failed = false;
             if recipe.skip_if.is_some() {
                 match execution_platform.app_already_installed(recipe.skip_if.as_ref().unwrap()) {
                     Ok(installed) => {
                         if installed {
-                            println!("`{}` is already installed. skip...", app.name);
+                            println!("`{}` is already installed. skip...", app.name());
                             continue;
                         }
                     }
@@ -56,9 +56,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if failed {
-                println!("fail to install `{}`", app.name);
+                println!("fail to install `{}`", app.name());
             } else {
-                println!("succeed to install `{}`", app.name);
+                println!("succeed to install `{}`", app.name());
             }
         }
     }
