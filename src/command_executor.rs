@@ -1,8 +1,9 @@
+use crate::argument_resolver::ArgumentResolver;
 use crate::schema::CommandConfig;
 use crate::ExecutionError;
 use std::process::Command;
 
-pub trait CommandExecutor {
+pub trait CommandExecutor: ArgumentResolver {
     fn construct_command(&self, command_config: &CommandConfig) -> Command;
 
     fn execute_command(

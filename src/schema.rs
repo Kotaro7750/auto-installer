@@ -38,15 +38,25 @@ pub struct ConcreteRecipe {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PathStr(pub String);
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Argument {
+    Path { path: PathStr },
+    String(String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Operation {
     Command(CommandConfig),
-    Link { original: String, link: String },
+    Link { original: PathStr, link: PathStr },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommandConfig {
-    pub command: String,
+    pub command: Argument,
     pub as_root: Option<bool>,
-    pub args: Option<Vec<String>>,
+    pub args: Option<Vec<Argument>>,
 }
