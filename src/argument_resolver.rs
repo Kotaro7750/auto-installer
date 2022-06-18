@@ -3,7 +3,7 @@ use dirs::home_dir;
 use regex::Regex;
 
 pub trait ArgumentResolver {
-    fn resolve_argument<'a>(&self, argument: &'a Argument) -> String {
+    fn resolve_argument(&self, argument: &Argument) -> String {
         match argument {
             Argument::Path { path: path_string } => self.resolve_path_argument(path_string),
             Argument::String(string) => string.clone(),
@@ -20,8 +20,8 @@ pub trait ArgumentResolver {
     }
 }
 
-fn expand_tilda(path_string: &String) -> String {
-    let without_tilda = path_string.clone().split_off(2);
+fn expand_tilda(path_string: &str) -> String {
+    let without_tilda = path_string.to_owned().split_off(2);
     let mut expanded = home_dir().unwrap();
     expanded.push(without_tilda);
 

@@ -1,13 +1,9 @@
 use crate::argument_resolver::ArgumentResolver;
 use crate::schema::PathStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub trait LinkExecutor: ArgumentResolver {
-    fn create_link(
-        &self,
-        original: &PathBuf,
-        link: &PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+    fn create_link(&self, original: &Path, link: &Path) -> Result<(), Box<dyn std::error::Error>>;
 
     fn execute_link(
         &self,

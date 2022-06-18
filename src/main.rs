@@ -5,7 +5,6 @@ mod link_executor;
 mod schema;
 
 use clap::Parser;
-use serde_yaml;
 use std::fs::File;
 
 use execution_platform::construct_execution_platform;
@@ -48,11 +47,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if !failed {
                 for (i, operation) in ((&recipe.operations).iter()).enumerate() {
                     println!("STEP: {}", i + 1);
-                    if let Err(_) = execution_platform.execute(operation) {
+                    if execution_platform.execute(operation).is_err() {
                         failed = true;
                         break;
                     };
-                    println!("");
+                    println!();
                 }
             }
 

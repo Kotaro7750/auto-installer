@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use crate::argument_resolver::ArgumentResolver;
@@ -33,8 +33,8 @@ impl CommandExecutor for UnixExecutionPlatform {
 impl LinkExecutor for UnixExecutionPlatform {
     fn create_link(
         &self,
-        original: &PathBuf,
-        link: &PathBuf,
+        original: &Path,
+        link: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         std::os::unix::fs::symlink(original, link)?;
         Ok(())
