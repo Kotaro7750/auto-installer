@@ -9,6 +9,10 @@ use crate::schema::CommandConfig;
 
 pub struct UnixExecutionPlatform;
 
+pub fn new() -> UnixExecutionPlatform {
+    UnixExecutionPlatform
+}
+
 impl ArgumentResolver for UnixExecutionPlatform {}
 
 impl CommandExecutor for UnixExecutionPlatform {
@@ -31,11 +35,7 @@ impl CommandExecutor for UnixExecutionPlatform {
 }
 
 impl LinkExecutor for UnixExecutionPlatform {
-    fn create_link(
-        &self,
-        original: &Path,
-        link: &Path,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn create_link(&self, original: &Path, link: &Path) -> Result<(), Box<dyn std::error::Error>> {
         std::os::unix::fs::symlink(original, link)?;
         Ok(())
     }

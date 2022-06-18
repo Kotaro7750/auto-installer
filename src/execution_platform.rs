@@ -5,7 +5,7 @@ use crate::link_executor::LinkExecutor;
 use crate::schema::CommandConfig;
 use crate::schema::Operation;
 
-mod unix;
+mod target_platform;
 
 pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
     fn execute(&self, operation: &Operation) -> Result<(), Box<dyn std::error::Error>> {
@@ -35,8 +35,5 @@ pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
 }
 
 pub fn construct_execution_platform() -> Box<dyn ExecutionPlatform> {
-    match std::env::consts::OS {
-        "linux" | "macos" => Box::new(unix::UnixExecutionPlatform),
-        _ => unimplemented!(),
-    }
+    Box::new(target_platform::new())
 }
