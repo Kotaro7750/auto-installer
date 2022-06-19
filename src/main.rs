@@ -40,14 +40,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                     }
-                    Err(_) => failed = true,
+                    Err(e) => {
+                        println!("{}", e);
+                        failed = true
+                    }
                 }
             }
 
             if !failed {
                 for (i, operation) in ((&recipe.operations).iter()).enumerate() {
                     println!("STEP: {}", i + 1);
-                    if execution_platform.execute(operation).is_err() {
+                    if let Err(e) = execution_platform.execute(operation) {
+                        println!("{}", e);
                         failed = true;
                         break;
                     };
