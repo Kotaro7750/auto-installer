@@ -22,8 +22,8 @@ impl CommandExecutor for WindowsExecutionPlatform {
 
         command.arg(self.resolve_argument(&command_config.command));
 
-        command.arg("-ArgumentList");
         if let Some(ref args) = command_config.args {
+            command.arg("-ArgumentList");
             command.args(args.iter().map(|arg| self.resolve_argument(arg)));
         }
 
