@@ -50,6 +50,7 @@ impl LinkExecutor for WindowsExecutionPlatform {
         command.args([link, original]);
         command.args(["-Wait", "-Verb", "RunAs"]);
 
+        command.output()?;
         Ok(())
     }
 }
