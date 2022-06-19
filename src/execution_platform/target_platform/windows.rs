@@ -4,6 +4,7 @@ use std::process::Command;
 use crate::argument_resolver::ArgumentResolver;
 use crate::command_executor::CommandExecutor;
 use crate::execution_platform::ExecutionPlatform;
+use crate::ExecutionError;
 use crate::link_executor::LinkExecutor;
 use crate::schema::CommandConfig;
 
@@ -50,8 +51,15 @@ impl LinkExecutor for WindowsExecutionPlatform {
         command.args([link, original]);
         command.args(["-Wait", "-Verb", "RunAs"]);
 
-        command.output()?;
-        Ok(())
+        println!("execute `{:?}`", command);
+
+        let status = command.status()?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err(Box::new(ExecutionError(status.code())))
+        }
     }
 }
 
