@@ -41,14 +41,14 @@ impl CommandExecutor for WindowsExecutionPlatform {
 impl LinkExecutor for WindowsExecutionPlatform {
     fn create_link(&self, original: &Path, link: &Path) -> Result<(), Box<dyn std::error::Error>> {
         let mut command = Command::new("powershell.exe");
-        command.args(["-Command","Start-Process","mklink.exe","-ArgumentList"]);
+        command.args(["-Command", "Start-Process", "mklink.exe", "-ArgumentList"]);
 
         if original.is_dir() {
             command.arg("/d");
         }
 
-        command.args([original,link]);
-        command.args(["-Wait","-Verb","RunAs"]);
+        command.args([link, original]);
+        command.args(["-Wait", "-Verb", "RunAs"]);
 
         Ok(())
     }
