@@ -24,13 +24,14 @@ dependencies = [
 
 [[package]]
 name = "auto-installer"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "clap",
  "dirs",
  "regex",
  "serde",
  "serde_yaml",
+ "static_vcruntime",
 ]
 
 [[package]]
@@ -298,6 +299,12 @@ dependencies = [
  "serde",
  "yaml-rust",
 ]
+
+[[package]]
+name = "static_vcruntime"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "954e3e877803def9dc46075bf4060147c55cd70db97873077232eae0269dc89b"
 
 [[package]]
 name = "strsim"
