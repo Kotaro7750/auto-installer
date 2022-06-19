@@ -15,8 +15,12 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build
         run:  cargo build --release
-      - name: Rename Packaging File
+      - name: Rename Packaging File for unix
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         run:  cp target/release/auto-installer auto-installer-${{ matrix.os }}
+      - name: Rename Packaging File for windows
+        if: matrix.os == 'windows-latest'
+        run:  cp target/release/auto-installer.exe auto-installer-${{ matrix.os }}
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
