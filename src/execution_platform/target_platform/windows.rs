@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
 
@@ -41,21 +40,24 @@ impl CommandExecutor for WindowsExecutionPlatform {
 }
 
 impl LinkExecutor for WindowsExecutionPlatform {
+    // powershell.exeのStart-Processコマンドレットを使って「New-Itemコマンドレットを実行するpowershell.exe」を管理者権限で起動する
     fn create_link(&self, original: &Path, link: &Path) -> Result<(), Box<dyn std::error::Error>> {
         let mut command = Command::new("powershell.exe");
+        command.arg("-NoProfile");
         command.arg("-Command");
 
-        let mut inner_command  = OsString::from("Start-Process powershell.exe -ArgumentList '-Command','New-Item -ItemType SymbolicLink -Path ");
-        inner_command.push(format!("\"{}\"", original.display()));
-        inner_command.push(" -Value ");
-        inner_command.push(format!("\"{}\"", link.display()));
-        inner_command.push("'");
+        // \"だと囲えない
+        // 恐らく呼び出しスタックのどこかで勝手に解釈されてしまったのだと思う
+        // そのため\という文字自体を渡してやることで一段解釈を先送りにする
+        let inner_command = format!(
+            "New-Item -ItemType SymbolicLink -Path \\\"{}\\\" -Value \\\"{}\\\"",
+            link.display(),
+            original.display()
+        );
 
-        command.arg(inner_command);
-        command.args(["-Wait", "-Verb", "RusAs"]);
+        command.arg(format!("Start-Process 'powershell.exe' -Wait -PassThru -Verb RunAs -ArgumentList '-NoProfile','-Command','{}'",inner_command));
 
-        println!("execute `{:?}`", command);
-
+        // XXX inner_commandが失敗しても失敗と判定されていない
         let status = command.status()?;
 
         if status.success() {
