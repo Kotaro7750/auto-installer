@@ -18,21 +18,10 @@ impl ArgumentResolver for WindowsExecutionPlatform {}
 
 impl CommandExecutor for WindowsExecutionPlatform {
     fn construct_command(&self, command_config: &CommandConfig) -> Command {
-        let mut command = Command::new("powershell.exe");
-        command.args(["-Command", "Start-Process"]);
-
-        command.arg(self.resolve_argument(&command_config.command));
+        let mut command = Command::new(self.resolve_argument(&command_config.command));
 
         if let Some(ref args) = command_config.args {
-            command.arg("-ArgumentList");
             command.args(args.iter().map(|arg| self.resolve_argument(arg)));
-        }
-
-        command.arg("-Wait");
-
-        if let Some(true) = command_config.as_root {
-            command.arg("-Verb");
-            command.arg("RunAs");
         }
 
         command
@@ -46,18 +35,14 @@ impl LinkExecutor for WindowsExecutionPlatform {
         command.arg("-NoProfile");
         command.arg("-Command");
 
-        // \"だと囲えない
-        // 恐らく呼び出しスタックのどこかで勝手に解釈されてしまったのだと思う
-        // そのため\という文字自体を渡してやることで一段解釈を先送りにする
         let inner_command = format!(
-            "New-Item -ItemType SymbolicLink -Path \\\"{}\\\" -Value \\\"{}\\\"",
+            "New-Item -ItemType SymbolicLink -Path \"{}\" -Value \"{}\"",
             link.display(),
             original.display()
         );
 
-        command.arg(format!("Start-Process 'powershell.exe' -Wait -PassThru -Verb RunAs -ArgumentList '-NoProfile','-Command','{}'",inner_command));
+        command.arg(inner_command);
 
-        // XXX inner_commandが失敗しても失敗と判定されていない
         let status = command.status()?;
 
         if status.success() {
