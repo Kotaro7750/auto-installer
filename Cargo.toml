@@ -1,6 +1,6 @@
 [package]
 name = "auto-installer"
-version = "0.2.8"
+version = "0.2.9"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,6 +11,16 @@ serde_yaml = "0.8"
 clap = { version = "3.0", features = ["derive"] }
 regex = "1"
 dirs = "4.0.0"
+
+[dependencies.windows-sys]
+version = "0.36.1"
+features = [
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_Environment",
+]
 
 [build-dependencies]
 static_vcruntime = "2.0"

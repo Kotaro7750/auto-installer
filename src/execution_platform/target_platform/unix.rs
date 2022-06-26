@@ -3,6 +3,7 @@ use std::process::Command;
 
 use crate::argument_resolver::ArgumentResolver;
 use crate::command_executor::CommandExecutor;
+use crate::environment_updater::EnvironmentUpdater;
 use crate::execution_platform::ExecutionPlatform;
 use crate::link_executor::LinkExecutor;
 use crate::schema::CommandConfig;
@@ -40,5 +41,7 @@ impl LinkExecutor for UnixExecutionPlatform {
         Ok(())
     }
 }
+
+impl EnvironmentUpdater for UnixExecutionPlatform {}
 
 impl ExecutionPlatform for UnixExecutionPlatform {}

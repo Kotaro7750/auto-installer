@@ -1,5 +1,6 @@
 mod argument_resolver;
 mod command_executor;
+mod environment_updater;
 mod execution_platform;
 mod link_executor;
 mod schema;

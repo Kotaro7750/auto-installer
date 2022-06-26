@@ -1,13 +1,14 @@
 use std::process::Stdio;
 
 use crate::command_executor::CommandExecutor;
+use crate::environment_updater::EnvironmentUpdater;
 use crate::link_executor::LinkExecutor;
 use crate::schema::CommandConfig;
 use crate::schema::Operation;
 
 mod target_platform;
 
-pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
+pub trait ExecutionPlatform: CommandExecutor + LinkExecutor + EnvironmentUpdater {
     fn execute(&self, operation: &Operation) -> Result<(), Box<dyn std::error::Error>> {
         match operation {
             Operation::Command(command_config) => {
@@ -17,6 +18,8 @@ pub trait ExecutionPlatform: CommandExecutor + LinkExecutor {
                 self.execute_link(original, link)?;
             }
         }
+
+        self.update_current_environment();
 
         Ok(())
     }
