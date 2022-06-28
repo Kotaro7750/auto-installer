@@ -33,10 +33,11 @@ impl Schema {
                     expandee.sort_by(|a, b| b.0.cmp(&a.0));
 
                     if !expandee.is_empty() {
-                        let platform_config = match self.platform_config.get(platform) {
-                            Some(pc) => pc,
-                            None => return Err(Box::new(SchemaError::PlatformConfigNotFound)),
-                        };
+                        let platform_config =
+                            match Self::resolve_platform_config(&self.platform_config, platform) {
+                                Some(pc) => pc,
+                                None => return Err(Box::new(SchemaError::PlatformConfigNotFound)),
+                            };
 
                         for (i, package_name) in expandee.iter() {
                             let operations =
@@ -51,14 +52,37 @@ impl Schema {
 
         Ok(())
     }
+
+    fn resolve_platform_config<'a>(
+        platform_config: &'a HashMap<String, PlatformConfig>,
+        platform: &String,
+    ) -> Option<&'a ConcretePlatformConfig> {
+        if let Some(pc) = platform_config.get(platform) {
+            match pc {
+                PlatformConfig::SameWith { same_with } => {
+                    Self::resolve_platform_config(platform_config, same_with)
+                }
+                PlatformConfig::ConcretePlatformConfig(cf) => Some(cf),
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PlatformConfig {
+#[serde(untagged)]
+pub enum PlatformConfig {
+    SameWith { same_with: String },
+    ConcretePlatformConfig(ConcretePlatformConfig),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConcretePlatformConfig {
     pub package_install: Vec<Operation>,
 }
 
-impl PlatformConfig {
+impl ConcretePlatformConfig {
     fn construct_package_install_operations(
         &self,
         package_name: impl AsRef<str>,
