@@ -21,6 +21,43 @@ struct CommandLineArg {
 #[derive(Debug)]
 struct ExecutionError(Option<i32>);
 
+#[derive(Debug)]
+struct InstallResult {
+    success: usize,
+    failure: usize,
+    skip: usize,
+}
+
+impl InstallResult {
+    fn new() -> Self {
+        Self {
+            success: 0,
+            failure: 0,
+            skip: 0,
+        }
+    }
+
+    fn success(&mut self) {
+        self.success += 1;
+    }
+    fn failure(&mut self) {
+        self.failure += 1;
+    }
+    fn skip(&mut self) {
+        self.skip += 1;
+    }
+}
+
+impl std::fmt::Display for InstallResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{} success, {} skip, {} failure",
+            self.success, self.skip, self.failure
+        )
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CommandLineArg::parse();
 
@@ -29,6 +66,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut schema = serde_yaml::from_reader::<File, Schema>(file)?;
 
     schema.expand()?;
+
+    let mut install_result = InstallResult::new();
 
     let apps = &schema.application;
     for app in apps {
@@ -40,6 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match execution_platform.app_already_installed(recipe.skip_if.as_ref().unwrap()) {
                     Ok(installed) => {
                         if installed {
+                            install_result.skip();
                             println!("`{}` is already installed. skip...", app.name());
                             continue;
                         }
@@ -64,12 +104,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if failed {
+                install_result.failure();
                 println!("fail to install `{}`", app.name());
             } else {
+                install_result.success();
                 println!("succeed to install `{}`", app.name());
             }
         }
     }
+
+    println!("{}", install_result);
 
     Ok(())
 }
