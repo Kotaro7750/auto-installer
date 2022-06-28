@@ -9,7 +9,7 @@ use clap::Parser;
 use std::fs::File;
 
 use execution_platform::construct_execution_platform;
-use schema::Application;
+use schema::Schema;
 
 #[derive(Parser)]
 struct CommandLineArg {
@@ -26,8 +26,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let file = File::open(args.scheme_file_path)?;
     let execution_platform = construct_execution_platform();
-    let apps = serde_yaml::from_reader::<File, Vec<Application>>(file)?;
+    let mut schema = serde_yaml::from_reader::<File, Schema>(file)?;
 
+    schema.expand()?;
+
+    let apps = &schema.application;
     for app in apps {
         if let Some(recipe) = app.resolve_recipe(&args.platform) {
             println!("install `{}`", app.name());

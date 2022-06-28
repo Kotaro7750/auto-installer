@@ -3,8 +3,7 @@ use std::process::Stdio;
 use crate::command_executor::CommandExecutor;
 use crate::environment_updater::EnvironmentUpdater;
 use crate::link_executor::LinkExecutor;
-use crate::schema::CommandConfig;
-use crate::schema::Operation;
+use crate::schema::{CommandConfig, Operation};
 
 mod target_platform;
 
@@ -16,6 +15,9 @@ pub trait ExecutionPlatform: CommandExecutor + LinkExecutor + EnvironmentUpdater
             }
             Operation::Link { original, link } => {
                 self.execute_link(original, link)?;
+            }
+            Operation::PackageInstall { .. } => {
+                panic!("package install should be expanded");
             }
         }
 

@@ -1,6 +1,96 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Debug)]
+enum SchemaError {
+    PlatformConfigNotFound,
+}
+
+impl std::fmt::Display for SchemaError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::PlatformConfigNotFound => write!(f, "platform config not found"),
+        }
+    }
+}
+impl std::error::Error for SchemaError {}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Schema {
+    pub platform_config: HashMap<String, PlatformConfig>,
+    pub application: Vec<Application>,
+}
+
+impl Schema {
+    pub fn expand(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        for app in self.application.iter_mut() {
+            for (platform, recipe) in app.recipe.iter_mut() {
+                if let PlatformSpecificRecipe::ConcreteRecipe(ref mut concrete_recipe) = recipe {
+                    let mut expandee = concrete_recipe.find_expandee();
+
+                    // 後ろから展開することでインデックスがずれるのを防ぐ
+                    // 前からだと複数のOperationに展開した際にインデックスがずれてしまう
+                    expandee.sort_by(|a, b| b.0.cmp(&a.0));
+
+                    if !expandee.is_empty() {
+                        let platform_config = match self.platform_config.get(platform) {
+                            Some(pc) => pc,
+                            None => return Err(Box::new(SchemaError::PlatformConfigNotFound)),
+                        };
+
+                        for (i, package_name) in expandee.iter() {
+                            let operations =
+                                platform_config.construct_package_install_operations(package_name);
+
+                            concrete_recipe.operations.splice(i..&(i + 1), operations);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlatformConfig {
+    pub package_install: Vec<Operation>,
+}
+
+impl PlatformConfig {
+    fn construct_package_install_operations(
+        &self,
+        package_name: impl AsRef<str>,
+    ) -> Vec<Operation> {
+        let mut operations = self.package_install.clone();
+
+        for operation in operations.iter_mut() {
+            // パッケージ名はコマンドの引数のみに表れる
+            if let Operation::Command(ref mut command_config) = operation {
+                if let Some(args) = &mut command_config.args {
+                    let mut new_args = Vec::<Argument>::new();
+
+                    for arg in args {
+                        let mut new_arg = arg.clone();
+                        if let Argument::String(arg_string) = &new_arg {
+                            if arg_string == "${package}" {
+                                new_arg = Argument::String(package_name.as_ref().to_string());
+                            }
+                        }
+
+                        new_args.push(new_arg);
+                    }
+
+                    command_config.args = Some(new_args);
+                }
+            }
+        }
+
+        operations
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Application {
     name: String,
@@ -37,24 +127,38 @@ pub struct ConcreteRecipe {
     pub operations: Vec<Operation>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl ConcreteRecipe {
+    fn find_expandee(&self) -> Vec<(usize, String)> {
+        let mut expandee = Vec::<(usize, String)>::new();
+        for (i, operation) in self.operations.iter().enumerate() {
+            if let Operation::PackageInstall { package_name } = operation {
+                expandee.push((i, package_name.clone()));
+            }
+        }
+
+        expandee
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PathStr(pub String);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Argument {
     Path { path: PathStr },
     String(String),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Operation {
     Command(CommandConfig),
     Link { original: PathStr, link: PathStr },
+    PackageInstall { package_name: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommandConfig {
     pub command: Argument,
     pub as_root: Option<bool>,
